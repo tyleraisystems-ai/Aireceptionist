@@ -6,7 +6,7 @@ endpoints, post-call pipeline, DB schema, and the Retell agent provisioning
 script. The Retell dashboard/API config (nodes, transitions, Knowledge Base)
 is provisioned from `scripts/provision_retell_agent.py` (added in M3).
 
-## Status: M5 — Simulation tests, guardrails, compliance disclosure
+## Status: M6 — Web/phone call testing, deploy notes
 
 - All 7 Custom Function endpoints are live and DB-backed: `check_availability`,
   `book_visit`, `reschedule_visit`, `cancel_visit` (all backed by Google
@@ -124,6 +124,32 @@ is provisioned from `scripts/provision_retell_agent.py` (added in M3).
   objection-handling path is the AI-disclosure/two-party-consent behavior;
   final wording sign-off for your jurisdiction is still a manual step (see
   "Dashboard-only steps" above).
+- **Web/phone call testing tooling**:
+  - `scripts/create_web_call.py` creates a Retell web call session against
+    the provisioned agent (cached `agent_id` from `.retell_state.json`) and
+    prints an access token plus a ready-to-open URL for
+    `web_test/index.html`.
+  - `web_test/index.html` is a dependency-free static page (loads
+    `retell-client-js-sdk` from the unpkg CDN, no Node/build tooling) with
+    Start/Stop buttons and a live transcript, for manually talking to the
+    agent end-to-end in a browser. Must be served over `http://` (e.g.
+    `python -m http.server 8001`), not opened via `file://`, since
+    microphone access requires a secure context.
+  - `scripts/create_test_phone_call.py` places an outbound test phone call
+    from a Retell-owned number to a destination you specify
+    (`--from`/`--to`, E.164). Requires a phone number already purchased and
+    bound to the agent first — a real, billable action (Dashboard > Phone
+    Numbers, or `client.phone_number.create(inbound_agents=[...])`),
+    intentionally not automated by any script here.
+- **Deploy notes**: see `DEPLOY.md` for the production Dockerfile, the full
+  environment-variable checklist, running `alembic upgrade head` against the
+  production DB, re-running `provision_retell_agent` once `BACKEND_BASE_URL`
+  points at a real domain instead of an ngrok tunnel (this rewrites every
+  Custom Function tool URL and the Agent's `webhook_url`), and a
+  consolidated go-live checklist pulling together every dashboard-only step
+  scattered across M3–M6 (voice_id pick, phone number purchase/binding,
+  compliance wording sign-off, simulation suite, web/phone call smoke
+  tests).
 
 ## Setup
 
@@ -163,6 +189,7 @@ ngrok http 8000
 pytest -v
 ```
 
-## Roadmap
+### Deploying
 
-- **M6** — Web/Phone Call Testing, deploy notes.
+See `DEPLOY.md` for the production Dockerfile, environment-variable
+checklist, and go-live checklist.
