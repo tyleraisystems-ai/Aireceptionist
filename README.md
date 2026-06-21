@@ -6,19 +6,25 @@ endpoints, post-call pipeline, DB schema, and the Retell agent provisioning
 script. The Retell dashboard/API config (nodes, transitions, Knowledge Base)
 is provisioned from `scripts/provision_retell_agent.py` (added in M3).
 
-## Status: M1 — backend scaffold
+## Status: M2 — all Custom Functions + Postgres + Google Calendar
 
-- FastAPI app with one Custom Function endpoint stub: `check_availability`
-  (returns two fake slots; real Google Calendar integration lands in M2).
+- All 7 Custom Function endpoints are live and DB-backed: `check_availability`,
+  `book_visit`, `reschedule_visit`, `cancel_visit` (all backed by Google
+  Calendar), plus `capture_lead`, `flag_emergency`, `transfer_to_human`.
 - `X-Retell-Signature` verification on every webhook request (401 on
   missing/invalid signature) via Retell's Python SDK.
-- Postgres schema (leads, appointments, call_logs, transcripts) + Alembic
-  migrations.
+- Idempotency: each mutating function caches its result keyed on Retell's
+  `call_id` + function name (`function_call_logs` table), so Retell's retries
+  (up to 2x) replay the cached result instead of double-booking/double-leading.
+- Postgres schema (leads, appointments, call_logs, transcripts,
+  function_call_logs) + Alembic migrations.
 - `config/business.yaml` holds editable business info (name, hours, service
   area, transfer number, FAQ, greeting/gas-safety scripts) — **edit the
   placeholders before go-live**.
-- pytest suite covering happy path, bad signature, missing signature, and
-  idempotent double-call for the stub endpoint.
+- pytest suite (21 tests) covering happy path, bad/missing signature,
+  idempotent double-call, and not-found cases for every endpoint, using an
+  in-memory fake Google Calendar client and a rolled-back DB transaction per
+  test (no real Google credentials needed to run tests).
 
 ## Setup
 
@@ -60,9 +66,6 @@ pytest -v
 
 ## Roadmap
 
-- **M2** — Remaining Custom Function endpoints (`book_visit`,
-  `reschedule_visit`, `cancel_visit`, `capture_lead`, `flag_emergency`,
-  `transfer_to_human`) + Google Calendar integration.
 - **M3** — `scripts/provision_retell_agent.py`: flow, nodes, function
   bindings, Node KB.
 - **M4** — Post-call pipeline: Post-Call Analysis, Twilio SMS, Jobber CRM

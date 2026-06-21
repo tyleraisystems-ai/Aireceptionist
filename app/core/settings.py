@@ -8,7 +8,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     retell_api_key: str = ""
-    retell_webhook_secret: str = ""
 
     database_url: str = "postgresql+psycopg://aireceptionist:aireceptionist@localhost:5432/aireceptionist"
 

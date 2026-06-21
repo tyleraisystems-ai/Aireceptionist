@@ -1,30 +1,25 @@
-import json
-from datetime import datetime, timedelta, timezone
-
 from fastapi import APIRouter, Depends
 
+from app.core.business_config import get_business_config
+from app.core.parsing import parse_call_args
 from app.core.retell_verify import verify_retell_signature
-from app.schemas import AvailabilitySlot, CheckAvailabilityResult, RetellFunctionCall
+from app.integrations.google_calendar import GoogleCalendarClient, get_calendar_client
+from app.schemas import AvailabilitySlot, CheckAvailabilityArgs, CheckAvailabilityResult
 
 router = APIRouter()
 
 
 @router.post("/functions/check-availability")
-async def check_availability(body: bytes = Depends(verify_retell_signature)) -> dict:
-    """M1 stub: returns two fake upcoming slots so the flow can be wired
-    end-to-end through Retell before the real Google Calendar integration
-    lands in M2.
-    """
-    RetellFunctionCall.model_validate(json.loads(body))
+async def check_availability(
+    body: bytes = Depends(verify_retell_signature),
+    calendar: GoogleCalendarClient = Depends(get_calendar_client),
+) -> dict:
+    parse_call_args(body, CheckAvailabilityArgs)
 
-    now = datetime.now(timezone.utc)
-    first_start = (now + timedelta(days=1)).replace(hour=9, minute=0, second=0, microsecond=0)
-    second_start = (now + timedelta(days=1)).replace(hour=13, minute=0, second=0, microsecond=0)
+    business_hours = get_business_config()["hours"]
+    slots = calendar.find_open_slots(business_hours=business_hours, max_results=2)
 
     result = CheckAvailabilityResult(
-        slots=[
-            AvailabilitySlot(start=first_start.isoformat(), end=(first_start + timedelta(hours=2)).isoformat()),
-            AvailabilitySlot(start=second_start.isoformat(), end=(second_start + timedelta(hours=2)).isoformat()),
-        ]
+        slots=[AvailabilitySlot(start=s.isoformat(), end=e.isoformat()) for s, e in slots]
     )
     return {"result": result.model_dump()}

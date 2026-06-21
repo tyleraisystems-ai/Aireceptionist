@@ -1,13 +1,30 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
     pass
+
+
+class FunctionCallLog(Base):
+    """Idempotency cache: dedupes Retell's retries (up to 2x) of the same
+    Custom Function call within the same conversation turn, keyed on the
+    Retell call_id + function name. The cached result is replayed verbatim
+    instead of re-running the side effect (booking, lead capture, etc.).
+    """
+
+    __tablename__ = "function_call_logs"
+    __table_args__ = (UniqueConstraint("call_id", "function_name", name="uq_call_id_function_name"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    call_id: Mapped[str] = mapped_column(String(255))
+    function_name: Mapped[str] = mapped_column(String(64))
+    result_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class Lead(Base):
