@@ -1,0 +1,46 @@
+# Business configuration — EDIT THESE PLACEHOLDERS BEFORE GO-LIVE.
+# Loaded by the agent prompt/greeting and by node-KB content; nothing here
+# is hardcoded into application logic.
+
+business_name: "Acme HVAC"
+service_area: "Anytown and surrounding 25-mile radius"
+hours:
+  monday: "8:00 AM - 6:00 PM"
+  tuesday: "8:00 AM - 6:00 PM"
+  wednesday: "8:00 AM - 6:00 PM"
+  thursday: "8:00 AM - 6:00 PM"
+  friday: "8:00 AM - 6:00 PM"
+  saturday: "9:00 AM - 1:00 PM"
+  sunday: "Closed"
+
+# Number the agent transfers to for emergencies / human callback requests.
+on_call_transfer_number: "+15555550100"  # PLACEHOLDER
+
+greeting_script: >
+  Thanks for calling Acme HVAC! You're speaking with our AI assistant, and
+  this call may be recorded for quality and training purposes. Are you
+  calling about a heating issue, a cooling issue, or something else?
+
+gas_safety_script: >
+  Before we go any further — do you smell gas right now, or have you
+  noticed a strong odor near your furnace or gas line?
+
+gas_emergency_response: >
+  Please leave the building right away and call your gas company or 911
+  from a safe location outside. Do not use light switches, phones, or
+  appliances inside. I'm ending this call now so you can act immediately —
+  please go.
+
+faq:
+  - question: "What are your hours?"
+    answer: "We're open Monday through Friday 8 AM to 6 PM, and Saturday 9 AM to 1 PM. We're closed Sundays, but you can leave a message and we'll call you back."
+  - question: "What areas do you service?"
+    answer: "We service Anytown and the surrounding 25-mile radius."
+  - question: "How much will my repair cost?"
+    answer: "Pricing depends on what's actually wrong with your system, so I can't quote an exact number over the phone — one of our technicians will assess it and confirm pricing with you before any work begins."
+  - question: "Do you offer maintenance plans?"
+    answer: "Yes, we offer seasonal tune-up and maintenance plans — I can have a technician follow up with details, or take down your info now."
+  - question: "How soon can someone come out?"
+    answer: "It depends on current scheduling and the urgency of your issue — I can check our next available appointment times for you now."
+  - question: "Is my system covered under warranty?"
+    answer: "Warranty coverage depends on your specific unit and install date, so a technician will need to confirm that when they're out, or you can have your documentation ready when we call back."
