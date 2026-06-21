@@ -6,7 +6,7 @@ endpoints, post-call pipeline, DB schema, and the Retell agent provisioning
 script. The Retell dashboard/API config (nodes, transitions, Knowledge Base)
 is provisioned from `scripts/provision_retell_agent.py` (added in M3).
 
-## Status: M3 — Retell agent/flow provisioning script
+## Status: M4 — Post-call pipeline
 
 - All 7 Custom Function endpoints are live and DB-backed: `check_availability`,
   `book_visit`, `reschedule_visit`, `cancel_visit` (all backed by Google
@@ -23,10 +23,13 @@ is provisioned from `scripts/provision_retell_agent.py` (added in M3).
   placeholders before go-live**.
 - `scripts/provision_retell_agent.py` provisions the Retell Knowledge Base
   (from `config/business.yaml`'s `faq`), Conversation Flow (22 nodes — see
-  below), and Agent via the Retell API. Idempotent: resource IDs are cached
-  in a local, gitignored `.retell_state.json`, so reruns `update()` existing
-  resources instead of creating duplicates. Requires `RETELL_API_KEY`,
-  `RETELL_VOICE_ID`, and `BACKEND_BASE_URL` set in `.env`. Run with
+  below), and Agent via the Retell API. The Agent's `webhook_url` is set to
+  `<BACKEND_BASE_URL>/webhooks/retell-post-call` so Retell delivers
+  `call_started`/`call_ended`/`call_analyzed` events to the M4 post-call
+  pipeline below. Idempotent: resource IDs are cached in a local, gitignored
+  `.retell_state.json`, so reruns `update()` existing resources instead of
+  creating duplicates. Requires `RETELL_API_KEY`, `RETELL_VOICE_ID`, and
+  `BACKEND_BASE_URL` set in `.env`. Run with
   `python -m scripts.provision_retell_agent`.
   - **Node count vs. spec**: the original spec described the flow as "7
     nodes + 1 emergency-end node." Retell's Conversation Flow graph requires
@@ -58,12 +61,40 @@ is provisioned from `scripts/provision_retell_agent.py` (added in M3).
     phone number to the provisioned agent; final review of the AI-disclosure
     and two-party-consent recording wording before go-live; LLM Playground /
     Web Call / Phone Call testing (M6).
-- pytest suite (30 tests) covering happy path, bad/missing signature,
+- pytest suite (35 tests) covering happy path, bad/missing signature,
   idempotent double-call, and not-found cases for every endpoint, using an
   in-memory fake Google Calendar client and a rolled-back DB transaction per
   test (no real Google credentials needed to run tests) — plus tests for the
   provisioning script's node-graph construction and create/update/idempotency
   logic against a fake Retell client (no real Retell credentials needed).
+- `POST /webhooks/retell-post-call` (signature-verified, same scheme as the
+  Custom Function endpoints) handles Retell's three post-call webhook
+  events, all delivered to this one configured `webhook_url`:
+  - `call_started` — upserts a `call_logs` row with `caller_number` +
+    `started_at`.
+  - `call_ended` — stores `ended_at` and the raw transcript.
+  - `call_analyzed` — the side-effecting event. Looks up the caller's most
+    recent `Lead` by phone number (preferred over re-parsing Retell's
+    LLM-extracted `call_analysis.custom_analysis_data`, since our own
+    Custom Function endpoints already wrote authoritative lead/appointment
+    data during the live call), stores the transcript + analysis JSON,
+    sends a Twilio SMS confirmation to the caller, sends an urgent-lead
+    alert SMS to `business.yaml`'s `on_call_transfer_number` when the
+    matched lead is `URGENT`, and upserts a Jobber CRM Client record (name,
+    phone, address). **No CRM/SMS side effects happen during the live call**
+    — they're all deferred to this post-call webhook, off the latency path.
+  - Idempotent: a `post_call_processed` flag on `call_logs` guards against
+    Retell redelivering `call_analyzed` and double-sending SMS / double-
+    upserting the CRM record.
+  - **Jobber scope**: deliberately limited to a Client upsert (search-by-
+    phone, create-or-update name/address), not full Job/Request/Quote
+    creation — matching the spec's literal "Jobber CRM upsert" wording
+    rather than expanding scope.
+  - Twilio and Jobber are both called via direct `httpx` requests (no
+    `twilio` SDK dependency) following the same constructor-takes-`Settings`
+    + module-level DI factory pattern as `GoogleCalendarClient`, so tests
+    swap in `FakeTwilioClient`/`FakeJobberClient` doubles with no network
+    access required.
 
 ## Setup
 
@@ -105,8 +136,6 @@ pytest -v
 
 ## Roadmap
 
-- **M4** — Post-call pipeline: Post-Call Analysis, Twilio SMS, Jobber CRM
-  upsert, call/transcript logging.
 - **M5** — Simulation test suite (`retell_sim_tests/`), Agent Guardrails,
   AI-disclosure + two-party-consent recording disclosure.
 - **M6** — Web/Phone Call Testing, deploy notes.

@@ -490,12 +490,15 @@ def provision_conversation_flow(
     return flow.conversation_flow_id
 
 
-def provision_agent(client: Retell, flow_id: str, voice_id: str, state: dict[str, Any]) -> str:
+def provision_agent(
+    client: Retell, flow_id: str, voice_id: str, state: dict[str, Any], backend_base_url: str
+) -> str:
     params: dict[str, Any] = {
         "response_engine": {"type": "conversation-flow", "conversation_flow_id": flow_id},
         "voice_id": voice_id,
         "agent_name": "HVAC Receptionist",
         "data_storage_setting": "everything",
+        "webhook_url": backend_base_url.rstrip("/") + "/webhooks/retell-post-call",
         "handbook_config": {"ai_disclosure": True},
         "guardrail_config": {
             "input_topics": ["platform_integrity_jailbreaking"],
@@ -544,7 +547,7 @@ def main() -> None:
     flow_id = provision_conversation_flow(client, business, tools, kb_id, state)
     save_state(settings.retell_state_path, state)
 
-    agent_id = provision_agent(client, flow_id, settings.retell_voice_id, state)
+    agent_id = provision_agent(client, flow_id, settings.retell_voice_id, state, settings.backend_base_url)
     save_state(settings.retell_state_path, state)
 
     print(f"\nDone. agent_id={agent_id} conversation_flow_id={flow_id} knowledge_base_id={kb_id}")

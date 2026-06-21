@@ -168,10 +168,11 @@ def test_provision_agent_creates_then_updates():
     client = FakeClient()
     state: dict = {}
 
-    agent_id_1 = provision_agent(client, "flow_1", "voice_x", state)
+    agent_id_1 = provision_agent(client, "flow_1", "voice_x", state, "http://localhost:8000")
     assert agent_id_1 == "agent_1"
     assert len(client.agent.create_calls) == 1
+    assert client.agent.create_calls[0]["webhook_url"] == "http://localhost:8000/webhooks/retell-post-call"
 
-    agent_id_2 = provision_agent(client, "flow_1", "voice_x", state)
+    agent_id_2 = provision_agent(client, "flow_1", "voice_x", state, "http://localhost:8000")
     assert agent_id_2 == agent_id_1
     assert len(client.agent.update_calls) == 1
