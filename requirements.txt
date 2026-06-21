@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+anthropic
+httpx
+python-dotenv
+pydantic-settings
+jinja2
