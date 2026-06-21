@@ -26,6 +26,11 @@ class Settings(BaseSettings):
 
     business_config_path: Path = Path("config/business.yaml")
 
+    # Retell agent provisioning (M3) — see scripts/provision_retell_agent.py
+    backend_base_url: str = "http://localhost:8000"
+    retell_voice_id: str = ""
+    retell_state_path: Path = Path(".retell_state.json")
+
 
 @lru_cache
 def get_settings() -> Settings:
