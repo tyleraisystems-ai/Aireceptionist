@@ -67,6 +67,13 @@ def test_build_global_prompt_includes_business_name_and_hard_rules():
     prompt = build_global_prompt(get_business_config())
     assert "Acme HVAC" in prompt
     assert "Never quote an exact price" in prompt
+    assert "recorded" in prompt.lower()
+
+
+def test_human_transfer_condition_covers_recording_objection():
+    from scripts.provision_retell_agent import HUMAN_TRANSFER_GLOBAL_CONDITION
+
+    assert "recorded" in HUMAN_TRANSFER_GLOBAL_CONDITION.lower()
 
 
 class FakeKnowledgeBase:
@@ -172,6 +179,18 @@ def test_provision_agent_creates_then_updates():
     assert agent_id_1 == "agent_1"
     assert len(client.agent.create_calls) == 1
     assert client.agent.create_calls[0]["webhook_url"] == "http://localhost:8000/webhooks/retell-post-call"
+    guardrails = client.agent.create_calls[0]["guardrail_config"]
+    assert set(guardrails["output_topics"]) == {
+        "harassment",
+        "self_harm",
+        "sexual_exploitation",
+        "violence",
+        "defense_and_national_security",
+        "illicit_and_harmful_activity",
+        "gambling",
+        "regulated_professional_advice",
+        "child_safety_and_exploitation",
+    }
 
     agent_id_2 = provision_agent(client, "flow_1", "voice_x", state, "http://localhost:8000")
     assert agent_id_2 == agent_id_1

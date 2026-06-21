@@ -6,7 +6,7 @@ endpoints, post-call pipeline, DB schema, and the Retell agent provisioning
 script. The Retell dashboard/API config (nodes, transitions, Knowledge Base)
 is provisioned from `scripts/provision_retell_agent.py` (added in M3).
 
-## Status: M4 — Post-call pipeline
+## Status: M5 — Simulation tests, guardrails, compliance disclosure
 
 - All 7 Custom Function endpoints are live and DB-backed: `check_availability`,
   `book_visit`, `reschedule_visit`, `cancel_visit` (all backed by Google
@@ -61,12 +61,14 @@ is provisioned from `scripts/provision_retell_agent.py` (added in M3).
     phone number to the provisioned agent; final review of the AI-disclosure
     and two-party-consent recording wording before go-live; LLM Playground /
     Web Call / Phone Call testing (M6).
-- pytest suite (35 tests) covering happy path, bad/missing signature,
+- pytest suite (42 tests) covering happy path, bad/missing signature,
   idempotent double-call, and not-found cases for every endpoint, using an
   in-memory fake Google Calendar client and a rolled-back DB transaction per
   test (no real Google credentials needed to run tests) — plus tests for the
   provisioning script's node-graph construction and create/update/idempotency
-  logic against a fake Retell client (no real Retell credentials needed).
+  logic against a fake Retell client, and for the simulation test runner's
+  provisioning/polling/reporting logic against a fake Retell `tests` client
+  (no real Retell credentials needed for any of it).
 - `POST /webhooks/retell-post-call` (signature-verified, same scheme as the
   Custom Function endpoints) handles Retell's three post-call webhook
   events, all delivered to this one configured `webhook_url`:
@@ -95,6 +97,33 @@ is provisioned from `scripts/provision_retell_agent.py` (added in M3).
     + module-level DI factory pattern as `GoogleCalendarClient`, so tests
     swap in `FakeTwilioClient`/`FakeJobberClient` doubles with no network
     access required.
+- **Simulation test suite** (`retell_sim_tests/scenarios.py` +
+  `scripts/run_simulation_tests.py`): 9 scenarios run as Retell Test Case
+  Definitions against the provisioned conversation flow via Retell's
+  `client.tests.*` batch-test API — routine booking, urgent no-heat
+  emergency, gas-smell immediate safety response, reschedule, cancel, FAQ
+  pricing (never quotes an exact price), explicit human-transfer request,
+  recording-objection routes to a human, and the no-offered-time → lead
+  capture fallback. Each scenario mocks its Custom Function calls
+  (`tool_mocks`) so a run doesn't need a publicly reachable backend.
+  Idempotent the same way as `provision_retell_agent.py`: test case
+  definition IDs are cached in `.retell_state.json` and updated in place on
+  reruns. Run with `python -m scripts.run_simulation_tests` after
+  `provision_retell_agent` (requires a live `RETELL_API_KEY` and an account
+  with the metric names in `DEFAULT_METRICS` configured in the dashboard's
+  Evaluation Metrics — adjust if yours differ).
+- **Agent Guardrails**: `guardrail_config.output_topics` now covers the
+  full set of prohibited-topic categories the API exposes (added
+  `defense_and_national_security`, `gambling`, `child_safety_and_exploitation`
+  to the ones already set in M3).
+- **Recording consent**: the global prompt and the human-transfer condition
+  now explicitly handle a caller objecting to or declining the call being
+  recorded — the agent doesn't argue, it offers an immediate transfer to a
+  human, since recording can't be toggled off mid-call via the API. The
+  existing `greeting_script` disclosure (`config/business.yaml`) plus this
+  objection-handling path is the AI-disclosure/two-party-consent behavior;
+  final wording sign-off for your jurisdiction is still a manual step (see
+  "Dashboard-only steps" above).
 
 ## Setup
 
@@ -136,6 +165,4 @@ pytest -v
 
 ## Roadmap
 
-- **M5** — Simulation test suite (`retell_sim_tests/`), Agent Guardrails,
-  AI-disclosure + two-party-consent recording disclosure.
 - **M6** — Web/Phone Call Testing, deploy notes.

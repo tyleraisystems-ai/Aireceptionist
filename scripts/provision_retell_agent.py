@@ -168,6 +168,10 @@ Hard rules, no exceptions:
 - Never promise an exact arrival time; only offer the appointment window itself.
 - If the caller sounds upset, confused, or explicitly asks for a person, offer \
 to transfer them to a human right away.
+- If the caller objects to, declines, or asks to opt out of the call being \
+recorded, do not argue or try to talk them out of it — immediately offer to \
+transfer them to a human instead, since recording cannot be turned off \
+mid-call.
 - If the caller says they smell gas at any point, stop everything else and \
 follow the gas safety procedure immediately — never steer a gas-smell caller \
 toward booking an appointment.
@@ -179,7 +183,8 @@ GAS_EMERGENCY_GLOBAL_CONDITION = (
 )
 HUMAN_TRANSFER_GLOBAL_CONDITION = (
     "The caller is upset, confused, frustrated, explicitly asks to speak to a "
-    "person/human/representative, or the agent is otherwise unable to help them."
+    "person/human/representative, objects to or declines the call being "
+    "recorded, or the agent is otherwise unable to help them."
 )
 
 
@@ -507,8 +512,11 @@ def provision_agent(
                 "self_harm",
                 "sexual_exploitation",
                 "violence",
+                "defense_and_national_security",
                 "illicit_and_harmful_activity",
+                "gambling",
                 "regulated_professional_advice",
+                "child_safety_and_exploitation",
             ],
         },
     }
